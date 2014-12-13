@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8">
+	<title>云图</title>
+	<link rel="stylesheet" href="visual.css">
+	<link rel="stylesheet" href="jqtransform/jqtransformplugin/jqtransform.css">
+	<link rel="stylesheet" href="jquery-ui-1.9.2/development-bundle/themes/base/jquery.ui.all.css">
+	<!-- <link rel="stylesheet" href="jquery-ui-1.9.2/css/smoothness/jquery-ui-1.9.2.custom.css"> -->
+	<script src="jquery-ui-1.9.2/js/jquery-1.8.3.js"></script>
+	<script src="jqtransform/jqtransformplugin/jquery.jqtransform.js"></script>
+	<script src="jquery-ui-1.9.2/js/jquery-ui-1.9.2.custom.js"></script>
+	<!-- <script src="jquery-ui-1.9.2/development-bundle/ui/jquery.ui.core.js"></script> -->
+	<!-- <script src="jquery-ui-1.9.2/development-bundle/ui/jquery.ui.widget.js"></script> -->
+	<!-- <script src="jquery-ui-1.9.2/development-bundle/ui/jquery.ui.accordion.js"></script> -->
+	<!-- <script src="jquery-ui-1.9.2/development-bundle/ui/jquery.ui.tabs.js"></script> -->
+	<script type="text/javascript">
+		$(function() {
+			$("#accordion").accordion({active:false,autoHeight:false,collapsible:true});
+			$("#new").accordion({autoHeight:false,collapsible:true});
+			// $("#tabs").tabs({active:0,collapsible:true});
+			// bounce shake drop slide blind clip fold puff scale size explode highlight pulsate
+			$("#tabs").tabs({ disabled: [ 1, 2 ,3 ,4 ], collapsible:true, hide: { effect: "slide", duration: 360 }, show: { effect: "slide", duration: 360 } });
+
+			$("#panelarrow").click(
+				function() {
+					if ($("#tabs").css("left") == "0px")
+					{
+						$("#tabs").animate(
+							{"left": "-284px"},
+							0,
+							function() {
+								$("#panelarrow").css({"right":"-27px"}).attr({"title":"展开面板"}).children().css("background","no-repeat url('hpimgs28.png') -155px -26px");
+								
+							}
+						);
+						$("#buffer")[0].width = window.innerWidth;
+						$("#screen")[0].width = window.innerWidth;
+						$("#canvas").animate({"left": 0},0);
+						move(0,0,0,global_canvas,global_layer);
+					}
+					else
+					{
+						$("#tabs").animate(
+							{"left": "0px"},
+							0).find("#panelarrow").css({"right":"0px"}).attr({"title":"隐藏面板"}).children().css("background","no-repeat url('hpimgs28.png') -132px -26px");
+						$("#buffer")[0].width = window.innerWidth-283;
+						$("#screen")[0].width = window.innerWidth-283;
+						move(0,0,0,global_canvas,global_layer);
+						$("#canvas").animate({"left": 283},0);
+						
+					}
+				}
+			);
+
+			$("form").jqTransform({imgPath:'jqtransformplugin/img/'});
+
+
+			var indx = 0;
+			var place,time,events,details;
+			$(document).on("click","#result",
+				function() {
+					place = $("form input[name=place]").val();
+					time = $("form input[name=time]").val();
+					events = $("form input[name=event]").val();
+					details = $("form textarea[name=details]").val();
+
+					time = parseInt(time);
+					
+					var result=new_item(global_current_line_array[global_current_line_index_edit],
+						global_layer.sitelayer_array[0],place,time,events,details,drawsite);
+					if(!result)
+					{
+						return;
+					}
+					$("#expandnode").prepend("<div><h3><a href='#'><span>"+place+"</span>&nbsp;<span>"+time+"</span></a></h3><div><span>事件："+events+"</span><br /><p>详细描述："+details+"</p><ul id='icons' class='ui-widget ui-helper-clearfix' style='position:relative;left:72px;width:90px;'><li class='ui-state-default ui-corner-all' title='修改'><span class='ui-icon ui-icon-pencil'></span></li><li class='ui-state-default ui-corner-all' title='删除'><span class='ui-icon ui-icon-trash'></span></li><li class='ui-state-default ui-corner-all' title='添加控制点'><span class='ui-icon ui-icon-plus'></span></li></ul></div></div>")
+					.children("div").eq(0).accordion({active:false,autoHeight:false,collapsible:true});
+					$("#clearall").trigger("click");
+					indx++;
+				}
+			);
+
+			$(document).on("click","#icons li[title=删除]",
+				function() {
+					$(this).parent().parent().parent().remove();
+				}
+			);
+			$(document).on("click","#icons li[title=修改]",
+				function() {
+					events = $(this).parent().parent().children("span").text();
+					details = $(this).parent().parent().children("p").text();
+					place = $(this).parent().parent().prev().children("a").children("span:first").text();
+					time = $(this).parent().parent().prev().children("a").children("span:last").text();
+					// alert(time);
+					$("form input[name=place]").val(place);
+					$("form input[name=time]").val(time);
+					$("form input[name=event]").val(events);
+					$("form textarea[name=details]").val(details);
+					$(this).parent().parent().parent().remove();
+				}
+			);			
+			// $("#icons li[title=删除]").click(
+			// 	function(){
+			// 		$(this).parent().remove();
+			// 	}
+			// );
+			$(document).on("hover","#icons li",
+				function() {
+					$(this).toggleClass("ui-state-hover");
+				}
+			);
+			// $("#icons li").hover(
+			// 	function() {
+			// 		$(this).addClass("ui-state-hover");
+			// 	},
+			// 	function() {
+			// 		$(this).removeClass("ui-state-hover");
+			// 	}
+			// );
+			
+			$(document).on("click","#certain",
+				function() {
+					if($("form input[name=pro_name]").val() === "")
+					{
+						$("form p.error").text("项目名称不为空");
+						$("#tabs").tabs( "option", "disabled", [1,2,3,4] );
+					}
+					else
+					{
+						$("#tabs").tabs( "option", "disabled", [] );
+						$("form p.error").empty();
+						var mapType = $("select[name=select]").prev().prev().children("span").text();
+						var dynasty = $("select[name=select1]").prev().prev().children("span").text();
+						$("#tabs-1").children("form").css({"display":"none"}).end().prepend("图示类型：<br />"+mapType+"<br /><br />朝代：<br />"+dynasty+"<br /><br />项目名称：<br />"+$("form input[name=pro_name]").val());
+					}
+			});
+			var pathName;
+			$(document).on("click","#path",
+				function() {
+					if($("form input[name=path_name]").val() === "")
+					{
+						$("form p.error1").text("路线名称不为空");
+					}
+					else
+					{
+						$("form p.error1").empty();
+						pathName = $(this).parents("form").find("input[name=path_name]").val();
+						$("#new").find("div:first").children("form").css({"display":"none"}).end().prepend("<p>路线名称："+pathName+"</p>");
+					}
+			});
+
+			$(document).on("click","#line",
+				function() {
+					$("#tabs").tabs( "option", "active", 2 );
+					$("#displaying").prepend($("#expandnode").html())
+					.children("div").accordion({active:false,autoHeight:false,collapsible:true});
+					$("#displaying").prepend("<p>路线："+pathName+"</p><div><ul id='icons' class='ui-widget ui-helper-clearfix' style='position:relative;left:72px;width:120px;'><li class='ui-state-default ui-corner-all' title='开始'><span class='ui-icon ui-icon-play'></span></li><li class='ui-state-default ui-corner-all' title='暂停'><span class='ui-icon ui-icon-pause'></span></li></ul></div>");
+
+					$("#new").find("div:first").children("form").css({"display":"block"}).end().children("p").remove();
+					$("#tabs-2").find("#icons li[title=删除]").trigger("click");
+			});
+
+			var canWidth = window.innerWidth - 283;
+			var canHeight = window.innerHeight - 73;
+			$("#canvas").css({ "width": canWidth, "height": canHeight});
+			$("canvas").attr({
+				"width": canWidth,
+				"height": canHeight
+			});
+			window.onresize = function() {
+				if ($("#tabs").css("left") == "0px")
+				{
+					$("#buffer")[0].width = window.innerWidth-283;
+					$("#buffer")[0].height = window.innerHeight-73;
+					$("#screen")[0].width = window.innerWidth-283;
+					$("#screen")[0].height = window.innerHeight-73;
+					move(0,0,0,global_canvas,global_layer);
+				}
+				else
+				{
+					$("#buffer")[0].width = window.innerWidth;
+					$("#buffer")[0].height = window.innerHeight-73;
+					$("#screen")[0].width = window.innerWidth;
+					$("#screen")[0].height = window.innerHeight-73;
+					move(0,0,0,global_canvas,global_layer);
+				}
+			}
+		});
+	</script>
+	<style>
+		#icons {
+			margin: 0;
+			padding: 0;
+		}
+		#icons li, #accordion li {
+			margin: 2px;
+			position: relative;
+			padding: 4px 0px;
+			cursor: pointer;
+			float: left;
+			list-style: none;
+		}
+		#icons span.ui-icon {
+			float: left;
+			margin: 0 4px;
+		}
+		.formbutton {
+			position: relative;
+			left: 89px;
+		}
+		.error, .error1 {
+			/*font-style: oblique;*/
+			/*font-weight: bold;*/
+			font-size: 10px;
+			color: red;
+		}
+	</style>
+</head>
+<body>
+	<div id="header">
+		<div id="search">
+			<div class="skunk-head">
+				<a id="logo" class="logohref" href="#" style="width:137px;height:41px">
+					<img class="logo-img" src="logo.gif" alt="云图" style="top:-41px">
+		        </a>
+				<div class="cntrl">
+					<table class="cntrltable" cellspacing="0" cellpadding="0" border="0">
+						<tbody>
+							<tr>
+								<td width="100%">
+									<div class="q_d_container" guidedhelpid="search_bar">
+										<input class="q_d_skunk skunkworks-input" autocomplete="off" autocorrect="off" value="" title="搜素图示" type="text" id="q_d" name="q" tabindex="1" maxlength="2048">
+		                            </div>
+				                </td>
+								<td>
+									<div class="q-outer">
+										<div class="q-inner" guidedhelpid="search_button">
+											<button class="kd-button kd-button-submit search-button" title="搜素图示" type="submit" id="q-sub" name="btnG" tabindex="2">
+												<img src="transparent.png" class="search-white">
+											</button>
+										</div>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="spacer"></div>
+			</div>
+		</div>
+	</div>
+
+	<div id="tabs" style="position:absolute;left:0px;top:72px;bottom:0px;width:280px;z-index:5;">
+
+		<div id="button" style="position:absolute;left:0px;top:0px;width:281px;height:46px;border-bottom:#ccc 1px solid;">
+			<div id="panelarrow" title="隐藏面板" style="position:absolute;right:0px;width:25px;height:45px;background:white;text-align:center;line-height:45px;background:#f5f5f5;z-index:1;cursor:pointer;">
+				<img src="transparent.png" style="background:no-repeat url('hpimgs28.png') -132px -26px;width:6px;height:12px;">
+			</div>
+		</div>
+
+		<ul id="menu" style="position:absolute;left:0px;top:48px;bottom:0px;width:35px;font-size:62.5%;">
+			<li style="clear:both;top:3px;"><a href="#tabs-1">地图选择</a></li>
+			<li style="clear:both;top:3px;"><a href="#tabs-2">地图编辑</a></li>
+			<li style="clear:both;top:3px;"><a href="#tabs-3">地图预览</a></li>
+			<li style="clear:both;top:3px;"><a href="#tabs-4">时间轴</a></li>
+			<li style="clear:both;top:3px;"><a href="#tabs-5">年表</a></li>
+		</ul>
+
+		<div id="tabs-1" style="position:absolute;left:44px;top:48px;right:1px;bottom:1px;overflow:auto;">
+			<form action="" method="">
+				<div class="rowElem">
+					<label>选择图示类型：</label>
+					<select name="select" style="width:88px;">
+						<option value="opt1">人物行踪图</option>
+						<option value="opt2">行军战役图</option>
+						<option value="opt3">文化遗迹图</option>
+						<option value="opt4">范围演变图</option>
+					</select>
+				</div>
+				<div class="rowElem">
+					<label>选择朝代：&nbsp;&nbsp;&nbsp;&nbsp;</label>
+					<select name="select1" style="width:75px;">
+						<option value="opt1">夏</option>
+						<option value="opt2">商</option>
+						<option value="opt3">西周</option>
+						<option value="opt4">东周</option>
+						<option value="opt5">春秋</option>
+						<option value="opt6">战国</option>
+						<option value="opt7">秦</option>
+						<option value="opt8">东汉</option>
+						<option value="opt9">西汉</option>
+						<option value="opt10">三国</option>
+						<option value="opt11">西晋</option>
+						<option value="opt12">东晋</option>
+						<option value="opt13">南北朝</option>
+						<option value="opt14">隋</option>
+						<option value="opt15">唐</option>
+						<option value="opt16">五代十国</option>
+						<option value="opt17">宋</option>
+						<option value="opt18">元</option>
+						<option value="opt19">明</option>
+						<option value="opt20">清</option>
+						<option value="opt21">近现代</option>
+					</select>
+				</div>
+				<div class="rowElem"><label>项目名称：</label><input type="text" name="pro_name" style="width:160px;" /></div>
+				<br><br><br>
+				<p class="error"></p>
+				<div class="rowElem"><input id="certain" type="button" value="确定" /></div>
+			</form>
+		</div>
+
+		<div id="tabs-2" style="position:absolute;left:44px;top:48px;right:1px;bottom:1px;overflow:auto;">
+			<div id="new">
+				<h3><a href="#">新建路线</a></h3>
+				<div>
+					<form action="" method="" style="position:relative;">
+						<div class="rowElem"><label>路线名称：</label><input type="text" name="path_name" style="width:160px;" /></div>
+						<br><br><br>
+						<p class="error1"></p>
+						<div class="rowElem"><input id="path" type="button" value="确定" /></div>
+					</form>
+				</div>
+				<h3><a href="#">途经地点</a></h3>
+				<div>
+					<form action="" method="">
+						<div class="rowElem"><label>地名：</label><input type="text" name="place" style="width:160px;" /></div>
+						<div class="rowElem"><label>时间：</label><input type="text" name="time" style="width:160px;" /></div>
+						<div class="rowElem"><label>事件：</label><input type="text" name="event" style="width:160px;" /></div>
+						<div class="rowElem"><label>详细描述：</label><textarea cols="48" rows="16" name="details"  style="width:160px;height:100px;overflow-y:visible;"></textarea></div>
+						<div class="rowElem"><input id="clearall" type="reset" value="清空" /><input id="result" type="button" value="确定" class="formbutton" /></div>
+					</form>
+				</div>
+			</div>
+
+			<div id="expandnode"></div>
+			<form action="" method="">
+				<div class="rowElem"><input id="line" type="button" value="提交路线" /></div>
+			</form>
+		</div>
+
+		<div id="tabs-3" style="position:absolute;left:44px;top:48px;right:1px;bottom:1px;overflow:auto;">
+			<div id="displaying"></div>
+		</div>
+
+		<div id="tabs-4" style="position:absolute;left:44px;top:48px;right:1px;bottom:1px;background:#f5f5f5;">
+			fourth
+		</div>
+
+		<div id="tabs-5" style="position:absolute;left:44px;top:48px;right:1px;bottom:1px;background:#f5f5f5;">
+			fifth
+		</div>
+
+	</div>
+
+	<div id="canvas">
+		<canvas id="buffer"></canvas>
+		<canvas id="screen">当前浏览器不支持canvas</canvas>
+	</div>
+	
+	<style type="text/css">
+		#canvas
+		{
+			position: absolute;
+			left: 283px;
+			top: 73px;
+			/*background-color: black;*/
+		}
+		#buffer,#screen
+		{
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			/*background-color: blue;*/
+		}
+	</style>
+
+<script type="text/javascript" src="script/MapLayer.js"></script>
+<script type="text/javascript" src="script/SiteLayer.js"></script>
+<script type="text/javascript" src="script/LineLayer.js"></script>
+<script type="text/javascript" src="script/Layer.js"></script>
+<script type="text/javascript" src="script/MilitaryLineLayer.js"></script>
+<script type="text/javascript">
+
+//argument系列对象定义
+var Argument_dragReturnValue=function()
+{
+	this.listener;
+}
+var Argument_zoomReturnValue=function()
+{
+	this.listener;
+}
+function drag(canvas,function_move,_layer)
+{
+    var context=canvas.getContext("2d");
+    var start_point={};
+    start_point.x=0;
+    start_point.y=0;
+    var end_point={};
+    end_point.x=0;
+    end_point.y=0;
+    var offset_point={};
+    offset_point.x=0;
+    offset_point.y=0;
+
+    function mouse_move(event)
+    {
+        end_point.x=event.clientX;
+        end_point.y=event.clientY;
+        offset_point.x=start_point.x-end_point.x;
+        offset_point.y=start_point.y-end_point.y;
+        function_move(offset_point.x,offset_point.y,end_point,canvas,_layer);
+        start_point.x=end_point.x;
+        start_point.y=end_point.y;
+    }
+    function mouse_down(event)
+    {
+        start_point.x=event.clientX;
+        start_point.y=event.clientY;
+        canvas.style.cursor="move";
+        canvas.addEventListener("mousemove",mouse_move,true);
+        canvas.addEventListener("mouseup",mouse_up,true);
+    }
+    function mouse_up(event)
+    {
+    	//console.log(1);
+    	canvas.style.cursor="default";
+        end_point.x=event.clientX;
+        end_point.y=event.clientY;
+        offset_point.x=start_point.x-end_point.x;
+        offset_point.y=start_point.y-end_point.y;
+        function_move(offset_point.x,offset_point.y,end_point,canvas,_layer);
+        canvas.removeEventListener("mousemove",mouse_move,true);
+        canvas.removeEventListener("mouseup",mouse_up,true);
+    }
+    canvas.addEventListener("mousedown",mouse_down,true);
+    return mouse_down;  
+}
+var drawsite=function(_canvas,_site,_x,_y,_fate)
+{
+	var context=_canvas.getContext('2d');
+	context.save();
+	context.lineWidth=1;
+	
+	context.strokeStyle="black";
+	context.textAlign="center";
+	context.font="10px sans-serif";
+	context.shadowBlur=20;
+    context.shadowOffsetX=5;
+    context.shadowOffsetY=5;
+    context.globalAlpha=0.6;
+	context.shadowColor='black';
+	context.strokeText(_site.name,_x,(_y-10));
+
+	context.restore();
+	context.save();
+	context.beginPath();
+	context.globalAlpha=0.6;
+	context.arc(_x,_y,4,0,6.28,false);
+	context.fillStyle="blue";
+	context.shadowBlur=20;
+    context.shadowOffsetX=5;
+    context.shadowOffsetY=5;
+	context.shadowColor='black';
+	context.fill();
+	context.closePath();
+}
+//注：_endpoint此处没有实际意义，只是方便drag函数条用其他函数
+var move=function (_offset_x,_offset_y,_endpoint,_canvas,_layer)
+{
+	var canvas_width=_canvas.width;
+	var canvas_height=_canvas.height;
+	_layer.original_point.x+=_offset_x/_layer.fate;
+	_layer.original_point.y+=_offset_y/_layer.fate;
+	if(_layer.original_point.x<0)
+	{
+		_layer.original_point.x=0;
+	}
+	if(_layer.original_point.y<0)
+	{
+		_layer.original_point.y=0;
+	}
+	_layer.drawMapSite(_canvas,canvas_width,canvas_height);
+	for(var i=0;i<_layer.linelayer_array.length;i++)
+	{
+		 _layer.linelayer_array[i].drawLineCompleteStatic(_canvas,_layer.original_point.y,_layer.original_point.x+canvas_width/_layer.fate,_layer.original_point.y+canvas_height/_layer.fate,_layer.original_point.x,5,"#aaa",0.001,_layer.original_point,_layer.fate);
+	}
+	// for(i=0;i<_layer.military_line_array.length;i++)
+	// {
+	// 	_layer.military_line_array[i].staticDraw(_canvas,global_layer.original_point,global_layer.fate,0.01,"black",20,30,12);
+	// }	
+}
+var zoom=function(_canvas,_layer)
+{
+	var f=function(e)
+	{
+		var a=parseInt(e.wheelDelta);
+		var context=_canvas.getContext('2d');
+		_layer.old_fate=_layer.fate;
+		if(a<0)
+		{
+			_layer.fate-=0.1;
+			if(_layer.fate<0.4)
+			{
+				_layer.fate=0.4;
+			}
+		}
+		else
+		{
+			_layer.fate+=0.1;
+			if(_layer.fate>3)
+			{
+				_layer.fate=3;
+			}
+		}
+		context.clearRect(0,0,_canvas.width,_canvas.height);
+		move(0.5*_canvas.width*(_layer.fate/_layer.old_fate-1),0.5*_canvas.height*(_layer.fate/_layer.old_fate-1),0,_canvas,_layer);
+	}
+	_canvas.addEventListener("mousewheel",f,false);
+	return f;
+}
+var new_item=function(_line,_site_layer,_place,_date,_event,_description,_drawfunction)
+{
+	var site=new Site(-1,-1,_place);
+	if(_site_layer.accurateSearch(site))
+	{
+		var item=new Item(_date,site,0,_event,_description,_line.item_array.length,_drawfunction);
+		if(!_line.addItem(item))
+		{
+			alert("添加节点失败");
+			return false;
+		}
+	}
+	else
+	{
+		alert("地图上暂时不存在这个点，请采用图上工具标注");
+		return false;
+	}
+	return true;
+}
+var drawLine=function(_canvas,_layer,_line_array,_index_array)
+{
+	_layer.linelayer_array.length=0;
+	for(var i=0;i<_index_array.length;i++)
+	{
+		_layer.linelayer_array.push(_line_array[_index_array[i]]);
+	}
+	var offset=_layer.zoom_fate_for_line(_canvas.width,_canvas.height,0.8);
+	move(offset.x,offset.y,0,_canvas,_layer);
+}
+///////////全局变量
+var global_layer;
+var global_canvas;
+var global_current_line_array=new Array();
+var global_current_line_index_edit=0;
+var global_current_line_index_array_display=new Array();
+var global_argument_dragReturnValue=new Argument_dragReturnValue();
+var global_argument_zoomReturnValue=new Argument_zoomReturnValue();
+var canvas=document.getElementById("screen");
+// var global_dom_edit_charactor=document.getElementById('charactor');
+// var global_dom_edit_date=document.getElementById('time');
+// var global_dom_edit_place=document.getElementById('place');
+// var global_dom_edit_description=document.getElementById('description');
+// var global_dom_edit_event=document.getElementById('event');
+// var global_dom_edit_submit_charactor=document.getElementById('submit_charactor');
+// var global_dom_edit_submit_item=document.getElementById('submit_item');
+// var global_buffer_canvas=document.getElementById('buffer');
+// var global_buffer_canvas_context=global_buffer_canvas.getContext('2d');
+global_canvas=canvas;
+var global_canvas_context=global_canvas.getContext('2d');
+
+
+var layer=new Layer();
+var siteLayer=new SiteLayer();
+var image=new Image();
+var map=new Map(image,3120,2060,1);
+
+
+image.src='image/map1.jpg';
+layer.maplayer_array.push(map);
+layer.sitelayer_array.push(siteLayer);
+
+global_layer=layer;
+global_line_id=0;
+image.onload=function()
+{
+	global_current_line_array.push(new Line(0,0));
+	move(0,0,0,global_canvas,global_layer);
+	global_argument_dragReturnValue.listener=drag(global_canvas,move,global_layer);
+	global_argument_zoomReturnValue.listener=zoom(global_canvas,global_layer);
+}
+var debug_display_dom=document.getElementById('tabs-3');
+var debug_display_dom_handler=function()
+{
+	global_current_line_index_array_display.push(0);
+	drawLine(global_canvas,global_layer,global_current_line_array,global_current_line_index_array_display);
+}
+debug_display_dom.addEventListener('click',debug_display_dom_handler,false);
+</script>
+
+<script type="text/javascript" src="script/site.js"></script>
+</body>
+</html>
